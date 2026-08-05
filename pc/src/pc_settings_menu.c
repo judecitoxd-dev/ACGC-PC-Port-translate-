@@ -26,6 +26,7 @@ enum {
     ITEM_SHOP_VISITOR,
     ITEM_BORDERLESS_ACRES,
     ITEM_NES_ASPECT,
+    ITEM_LANGUAGE,
     ITEM_MASTER_VOLUME,
     ITEM_STICK_DEADZONE,
     ITEM_CSTICK_DEADZONE,
@@ -51,6 +52,7 @@ static const Item tab_video_items[] = {
 };
 
 static const Item tab_gameplay_items[] = {
+    { "Language",         ITEM_LANGUAGE,         1 },
     { "Resetti",          ITEM_RESETTI,          0 },
     { "Shop upgrade",     ITEM_SHOP_VISITOR,     0 },
     { "Borderless acres", ITEM_BORDERLESS_ACRES, 0 },
@@ -257,7 +259,8 @@ static void recompute_dirty(void) {
         (s_pending.nes_aspect       != g_pc_settings.nes_aspect) ||
         (s_pending.master_volume    != g_pc_settings.master_volume) ||
         (s_pending.stick_deadzone   != g_pc_settings.stick_deadzone) ||
-        (s_pending.cstick_deadzone  != g_pc_settings.cstick_deadzone);
+        (s_pending.cstick_deadzone  != g_pc_settings.cstick_deadzone) ||
+        (strcmp(s_pending.language, g_pc_settings.language) != 0);
 }
 
 static void snapshot(void) {
@@ -315,6 +318,12 @@ static void item_cycle(int id, int dir) {
             break;
         case ITEM_NES_ASPECT:
             s_pending.nes_aspect = !s_pending.nes_aspect;
+            break;
+        case ITEM_LANGUAGE:
+            if (strcmp(s_pending.language, "en") == 0)
+                strcpy(s_pending.language, "es");
+            else
+                strcpy(s_pending.language, "en");
             break;
         case ITEM_MASTER_VOLUME: {
             int v = s_pending.master_volume + (dir > 0 ? 10 : -10);
@@ -386,6 +395,14 @@ static void item_format(int id, char* buf, size_t n) {
         case ITEM_NES_ASPECT:
             snprintf(buf, n, "%s", s_pending.nes_aspect ? "< 4:3 >" : "< Stretch >");
             break;
+        case ITEM_LANGUAGE:
+            if (strcmp(s_pending.language, "en") == 0)
+                snprintf(buf, n, "< English >");
+            else if (strcmp(s_pending.language, "es") == 0)
+                snprintf(buf, n, "< Espanol >");
+            else
+                snprintf(buf, n, "< %s >", s_pending.language);
+            break;
         case ITEM_MASTER_VOLUME:
             snprintf(buf, n, "< %d%% >", s_pending.master_volume);
             break;
@@ -419,6 +436,7 @@ static int item_changed(int id) {
         case ITEM_SHOP_VISITOR: return s_pending.disable_shop_visitor_req != g_pc_settings.disable_shop_visitor_req;
         case ITEM_BORDERLESS_ACRES: return s_pending.borderless_acres != g_pc_settings.borderless_acres;
         case ITEM_NES_ASPECT:    return s_pending.nes_aspect    != g_pc_settings.nes_aspect;
+        case ITEM_LANGUAGE:      return strcmp(s_pending.language, g_pc_settings.language) != 0;
         case ITEM_MASTER_VOLUME: return s_pending.master_volume != g_pc_settings.master_volume;
         case ITEM_STICK_DEADZONE:  return s_pending.stick_deadzone  != g_pc_settings.stick_deadzone;
         case ITEM_CSTICK_DEADZONE: return s_pending.cstick_deadzone != g_pc_settings.cstick_deadzone;
@@ -434,6 +452,7 @@ static int item_differs_from_startup(int id) {
     switch (id) {
         case ITEM_MSAA:     return g_pc_settings.msaa             != s_startup.msaa;
         case ITEM_TEXTURES: return g_pc_settings.preload_textures != s_startup.preload_textures;
+        case ITEM_LANGUAGE: return strcmp(g_pc_settings.language, s_startup.language) != 0;
     }
     return 0;
 }

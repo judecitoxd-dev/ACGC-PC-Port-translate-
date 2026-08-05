@@ -574,11 +574,16 @@ def decode_file(data_path: str, table_path: str, out_path: str):
                 break
             end = struct.unpack(">I", bytes)[0]
             if end != 0:
+                if end < last_end:
+                    raise ValueError(
+                        f"Table entry {idx} ends at 0x{end:X}, before previous end 0x{last_end:X}"
+                    )
                 size = end - last_end
+                if size > 0:
+                    data = bytearray(df.read(size))
+                    decoded_str = decode_entry(data, 0, size, idx)
+                    output_buffer.append(decoded_str)
                 last_end = end
-                data = bytearray(df.read(size))
-                decoded_str = decode_entry(data, 0, size, idx)
-                output_buffer.append(decoded_str)
 
             idx += 1
             # Write buffer content to file to reduce write calls
@@ -660,53 +665,82 @@ def encode_file(
     data_size: int = -1,
     table_size: int = -1,
 ):
+    """Encode an editable dump while preserving its numeric message IDs.
+
+    Entries are delimited by the next ``[[ENTRY N START]]`` marker, not by a
+    substring search for terminal commands. The old implementation used
+    ``line.find("<<MSGTIMEEND")`` as a boolean; ``-1`` is truthy in Python,
+    so almost every line accidentally stopped the current entry.
+    """
+    marker = re.compile(r"^\[\[ENTRY\s+(\d+)\s+START\]\]$")
     entries = {}
     current_entry = None
-    recording = False
+    current_lines = []
 
-    with open(file_path, "r", encoding="utf-8") as tf, open(data_path, "wb") as df, open(
-        table_path, "wb"
-    ) as tabf:
-        for line in tf:
+    def finish_entry():
+        nonlocal current_entry, current_lines
+        if current_entry is None:
+            return
+        text = "".join(current_lines).rstrip()
+        if not text:
+            raise ValueError(f"Entry {current_entry} is empty")
+        if not re.search(r"<<(?:MSGEND|MSGCONTINUE|MSGTIMEEND)(?:\s+\[[^]]*\])?>>$", text):
+            raise ValueError(
+                f"Entry {current_entry} has no terminal MSGEND, MSGCONTINUE, or MSGTIMEEND code"
+            )
+        try:
+            entries[current_entry] = encode_entry(text)
+        except ValueError as exc:
+            raise ValueError(f"Entry {current_entry}: {exc}") from exc
+        current_entry = None
+        current_lines = []
+
+    with open(file_path, "r", encoding="utf-8") as tf:
+        for line_no, line in enumerate(tf, 1):
             stripped_line = line.strip()
-
-            # Check for entry start
-            if stripped_line.startswith("[[ENTRY") and stripped_line.endswith("START]]"):
-                entry_index = stripped_line.split()[1]  # Assuming the format [[ENTRY X START]]
+            match = marker.match(stripped_line)
+            if match:
+                finish_entry()
+                entry_index = int(match.group(1))
+                if entry_index in entries:
+                    raise ValueError(f"Duplicate entry {entry_index} at line {line_no}")
                 current_entry = entry_index
-                entries[current_entry] = []
-                recording = True
+                current_lines = []
                 continue
+            if current_entry is not None:
+                current_lines.append(line)
+            elif stripped_line:
+                raise ValueError(f"Text outside an entry at line {line_no}")
+        finish_entry()
 
-            # Check for entry end
-            if (
-                line.find("<<MSGEND>>") != -1
-                or line.find("<<MSGTIMEEND")
-                or line.find("<<MSGCONTINUE>>")
-            ):
-                entries[current_entry].append(line)
-                recording = False
-                continue
+    if not entries:
+        raise ValueError("No entries were found")
 
-            # Record lines if within an entry and not empty
-            if recording and line:
-                entries[current_entry].append(line)
+    max_entry = max(entries)
+    generated_table_size = (max_entry + 1) * 4
+    if table_size > 0 and generated_table_size > table_size:
+        raise ValueError(
+            f"Generated table needs 0x{generated_table_size:X} bytes, larger than requested 0x{table_size:X}"
+        )
 
-        # end_ofs = 0
-        for entry in entries:
-            entries[entry] = encode_entry("".join(entries[entry]).rstrip())
-            df.write(entries[entry])
+    with open(data_path, "wb") as df, open(table_path, "wb") as tabf:
+        # A table entry is the cumulative end offset. Missing IDs retain the
+        # previous end offset and therefore become a safe zero-length entry.
+        for entry_index in range(max_entry + 1):
+            encoded = entries.get(entry_index)
+            if encoded is not None:
+                df.write(encoded)
             tabf.write(struct.pack(">I", df.tell()))
 
         if data_size > 0:
-            data_remain = data_size - df.tell()
-            if data_remain > 0:
-                df.write(b"\x00" * data_remain)
+            if df.tell() > data_size:
+                raise ValueError(
+                    f"Generated data is 0x{df.tell():X} bytes, larger than requested 0x{data_size:X}"
+                )
+            df.write(b"\x00" * (data_size - df.tell()))
 
         if table_size > 0:
-            table_remain = table_size - tabf.tell()
-            if table_remain > 0:
-                tabf.write(b"\x00" * table_remain)
+            tabf.write(b"\x00" * (table_size - tabf.tell()))
 
     return entries
 

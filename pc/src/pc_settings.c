@@ -3,6 +3,7 @@
 #include "pc_platform.h"
 #include "m_player_lib.h"
 #include "ac_birth_control.h"
+#include <ctype.h>
 
 PCSettings g_pc_settings = {
     .window_width  = PC_SCREEN_WIDTH,
@@ -20,6 +21,7 @@ PCSettings g_pc_settings = {
     .master_volume = 100,
     .stick_deadzone = 12,
     .cstick_deadzone = 12,
+    .language = "en",
 };
 
 static const char* SETTINGS_FILE = "settings.ini";
@@ -69,7 +71,11 @@ static const char* DEFAULT_SETTINGS =
     "[Input]\n"
     "# Gamepad stick deadzones as a percentage (0-40)\n"
     "stick_deadzone = 12\n"
-    "cstick_deadzone = 12\n";
+    "cstick_deadzone = 12\n"
+    "\n"
+    "[Language]\n"
+    "# en = original ROM text; other codes load languages/<code>/aram\n"
+    "language = en\n";
 
 static const char* skip_ws(const char* s) {
     while (*s == ' ' || *s == '\t') s++;
@@ -120,6 +126,18 @@ static void apply_setting(const char* key, const char* value) {
         if (val >= 0 && val <= 40) g_pc_settings.stick_deadzone = val;
     } else if (strcmp(key, "cstick_deadzone") == 0) {
         if (val >= 0 && val <= 40) g_pc_settings.cstick_deadzone = val;
+    } else if (strcmp(key, "language") == 0) {
+        size_t i;
+        size_t len = strlen(value);
+        int valid = len > 0 && len < sizeof(g_pc_settings.language);
+        for (i = 0; valid && i < len; i++) {
+            unsigned char c = (unsigned char)value[i];
+            if (!(isalnum(c) || c == '-' || c == '_')) valid = 0;
+        }
+        if (valid) {
+            strncpy(g_pc_settings.language, value, sizeof(g_pc_settings.language) - 1);
+            g_pc_settings.language[sizeof(g_pc_settings.language) - 1] = '\0';
+        }
     }
 }
 
@@ -208,6 +226,9 @@ void pc_settings_save(void) {
     fprintf(f, "# Gamepad stick deadzones as a percentage (0-40)\n");
     fprintf(f, "stick_deadzone = %d\n", g_pc_settings.stick_deadzone);
     fprintf(f, "cstick_deadzone = %d\n", g_pc_settings.cstick_deadzone);
+    fprintf(f, "\n[Language]\n");
+    fprintf(f, "# en = original ROM text; other codes load languages/<code>/aram\n");
+    fprintf(f, "language = %s\n", g_pc_settings.language);
     fclose(f);
     printf("[Settings] Saved %s\n", SETTINGS_FILE);
 }
@@ -394,4 +415,5 @@ void pc_settings_load(void) {
            SETTINGS_FILE, g_pc_settings.window_width, g_pc_settings.window_height,
            g_pc_settings.fullscreen, g_pc_settings.vsync, g_pc_settings.max_fps, g_pc_settings.msaa,
            g_pc_settings.preload_textures, g_pc_settings.borderless_acres);
+    printf("[Settings] Language: %s\n", g_pc_settings.language);
 }

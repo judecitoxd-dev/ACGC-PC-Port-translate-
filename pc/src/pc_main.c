@@ -3,6 +3,7 @@
 #include "pc_gx_internal.h"
 #include "pc_texture_pack.h"
 #include "pc_settings.h"
+#include "pc_language.h"
 #include "pc_keybindings.h"
 #include "pc_assets.h"
 #include "pc_disc.h"
@@ -396,9 +397,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    /* Language packs are initialized after runtime assets so an optional
+     * external font cannot be overwritten by pc_assets_init(). */
+    pc_language_init(g_pc_settings.language);
+
     ac_entry();                         /* sets HotStartEntry = &entry */
     boot_main(argc, (const char**)argv); /* full init → HotStartEntry → game loop */
 
+    pc_language_shutdown();
     pc_disc_shutdown();
     pc_platform_shutdown();
     return 0;

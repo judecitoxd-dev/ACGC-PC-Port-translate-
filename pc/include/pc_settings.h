@@ -21,6 +21,7 @@ typedef struct {
     int master_volume;    /* Applied at the PC audio output, 0-100 (default 100) */
     int stick_deadzone;   /* Gamepad main stick deadzone, percent 0-40 (default 12) */
     int cstick_deadzone;  /* Gamepad C-stick deadzone, percent 0-40 (default 12) */
+    char language[32];   /* Language pack folder: en=ROM original, es=languages/es */
 } PCSettings;
 
 extern PCSettings g_pc_settings;

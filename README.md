@@ -123,3 +123,10 @@ AI tools such as Claude were used in this project (PC port code only).
 ## FAQ
 
 See [FAQ](FAQ.md) for more info.
+
+## External language packs (development branch)
+
+The `pc-custom-languages` branch can load ROM-safe text replacements from
+`languages/<code>/aram/`. English always uses the original supported USA ROM.
+Spanish is selected from the in-game settings menu and falls back to English
+for every missing or invalid data/table pair. See `docs/LANGUAGES_ES.md`.
