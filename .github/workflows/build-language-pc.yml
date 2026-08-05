@@ -33,34 +33,36 @@ jobs:
       - name: Validate language tools
         shell: msys2 {0}
         run: |
-          python -m py_compile tools/msg_tool.py tools/language_pack.py
+          python -m py_compile tools/msg_tool.py tools/language_pack.py tools/pal_multi5_import.py
           python tools/language_pack.py validate languages/es
       - name: Build native Win32 port
         shell: msys2 {0}
         run: ./build_pc.sh
-      - name: Verify language-enabled executable
+      - name: Verify Multi5-enabled executable
         shell: msys2 {0}
         run: |
           EXE=pc/build32/bin/AnimalCrossing.exe
           test -f "$EXE"
           file "$EXE" | grep -qi 'PE32 executable'
           strings "$EXE" | grep -q 'languages/%s/aram'
-          strings "$EXE" | grep -q 'missing resources fall back to English'
+          strings "$EXE" | grep -q 'languages/%s/items'
+          strings "$EXE" | grep -q 'Loaded.*ARAM resources.*item tables'
+          strings "$EXE" | grep -q 'Francais'
+          strings "$EXE" | grep -q 'Deutsch'
+          strings "$EXE" | grep -q 'Italiano'
           strings "$EXE" | grep -q 'message_data.bin'
           ! find languages -type f \( -name '*.bin' -o -name '*.arc' -o -name '*.szs' \) -print -quit | grep -q .
       - name: Package test build
         shell: msys2 {0}
         run: |
-          mkdir -p pc/build32/bin/languages/es/aram
+          mkdir -p pc/build32/bin/languages
           cp languages/README.md pc/build32/bin/languages/
-          cp languages/es/manifest.ini pc/build32/bin/languages/es/
-          cp languages/es/aram/README.md pc/build32/bin/languages/es/aram/
           cp docs/LANGUAGES_ES.md pc/build32/bin/
           cd pc/build32/bin
-          zip -q -r "$GITHUB_WORKSPACE/Animal-Crossing-PC-Custom-Languages-Win32.zip" .
+          zip -q -r "$GITHUB_WORKSPACE/Animal-Crossing-PC-Multi5-Win32-base.zip" .
       - uses: actions/upload-artifact@v4
         with:
-          name: Animal-Crossing-PC-Custom-Languages-Win32
-          path: Animal-Crossing-PC-Custom-Languages-Win32.zip
+          name: Animal-Crossing-PC-Multi5-Win32-base
+          path: Animal-Crossing-PC-Multi5-Win32-base.zip
           if-no-files-found: error
           retention-days: 7
