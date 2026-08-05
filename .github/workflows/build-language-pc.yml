@@ -30,15 +30,16 @@ jobs:
             file
             binutils
             zip
-      - name: Validate Multi5 source and tools
+      - name: Validate Multi6 source and tools
         shell: msys2 {0}
         run: |
           python -m py_compile tools/msg_tool.py tools/language_pack.py tools/pal_multi5_import.py
           grep -q 'pc_language_expand_custom_control' pc/src/pc_language.c
           grep -q 'languages/%s/items' pc/src/pc_language.c
-          grep -q 'Francais' pc/src/pc_settings_menu.c
-          grep -q 'Deutsch' pc/src/pc_settings_menu.c
-          grep -q 'Italiano' pc/src/pc_settings_menu.c
+          grep -q 'languages/%s/font/FONT_nes_tex_font1.bin' pc/src/pc_language.c
+          grep -q 'Turkish has no grammatical gender' pc/src/pc_language.c
+          grep -q 'Turkce' pc/src/pc_settings_menu.c
+          grep -q 'CHAR_BREVE_g' include/m_font.h
           ! find languages -type f \( -name '*.bin' -o -name '*.arc' -o -name '*.szs' \) -print -quit | grep -q .
       - name: Build native Win32 port
         shell: msys2 {0}
@@ -51,6 +52,8 @@ jobs:
           file "$EXE" | grep -qi 'PE32 executable'
           test -f pc/build32/bin/SDL2.dll
           strings "$EXE" | grep -q 'message_data.bin'
+          strings "$EXE" | grep -q 'FONT_nes_tex_font1.bin'
+          strings "$EXE" | grep -q 'Turkce'
       - name: Package test build
         shell: msys2 {0}
         run: |
@@ -58,10 +61,10 @@ jobs:
           cp languages/README.md pc/build32/bin/languages/
           cp docs/LANGUAGES_ES.md pc/build32/bin/
           cd pc/build32/bin
-          zip -q -r "$GITHUB_WORKSPACE/Animal-Crossing-PC-Multi5-Win32-base.zip" .
+          zip -q -r "$GITHUB_WORKSPACE/Animal-Crossing-PC-Multi6-Turkish-Win32-base.zip" .
       - uses: actions/upload-artifact@v4
         with:
-          name: Animal-Crossing-PC-Multi5-Win32-base
-          path: Animal-Crossing-PC-Multi5-Win32-base.zip
+          name: Animal-Crossing-PC-Multi6-Turkish-Win32-base
+          path: Animal-Crossing-PC-Multi6-Turkish-Win32-base.zip
           if-no-files-found: error
           retention-days: 7
