@@ -1,0 +1,42 @@
+name: Apply runtime-generated Turkish font
+
+on:
+  push:
+    branches:
+      - pc-custom-languages
+    paths:
+      - '.github/workflows/apply-runtime-turkish-font.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pc-custom-languages
+          fetch-depth: 0
+      - name: Reconstruct and verify patch
+        run: |
+          base64 --decode .multi6-build/runtime-turkish-font.patch.gz.b64 > "$RUNNER_TEMP/runtime-font.patch.gz"
+          gzip -dc "$RUNNER_TEMP/runtime-font.patch.gz" > "$RUNNER_TEMP/runtime-font.patch"
+          echo '64e7a08185020ed368d1ef66dcfc1837a0b07bab3a7b8a4a0783ffb203c4015f  '"$RUNNER_TEMP/runtime-font.patch" | sha256sum -c -
+          patch --dry-run --batch -p1 < "$RUNNER_TEMP/runtime-font.patch"
+      - name: Apply runtime glyph generation
+        run: |
+          patch --batch -p1 < "$RUNNER_TEMP/runtime-font.patch"
+          grep -q 'generate_turkish_font' pc/src/pc_language.c
+          grep -q 'No font asset is distributed' pc/src/pc_language.c
+          ! grep -q 'load_custom_font' pc/src/pc_language.c
+          ! grep -q 'FONT_nes_tex_font1.bin' docs/LANGUAGES_TR.md
+          rm -rf .multi6-build
+      - name: Commit implementation
+        run: |
+          git config user.name 'judecitoxd-dev'
+          git config user.email 'judecitoxd@gmail.com'
+          git add -A
+          git commit -m 'Generate Turkish glyphs from the ROM font at runtime'
+          git push origin HEAD:pc-custom-languages
