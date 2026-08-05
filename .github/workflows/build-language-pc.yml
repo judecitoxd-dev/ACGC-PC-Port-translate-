@@ -1,0 +1,63 @@
+name: Build PC custom languages
+
+on:
+  push:
+    branches:
+      - pc-custom-languages
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-win32:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: true
+          install: >-
+            mingw-w64-i686-gcc
+            mingw-w64-i686-cmake
+            mingw-w64-i686-SDL2
+            mingw-w64-i686-make
+            zip
+      - name: Validate language tools
+        shell: msys2 {0}
+        run: |
+          python -m py_compile tools/msg_tool.py tools/language_pack.py
+          python tools/language_pack.py validate languages/es
+      - name: Build native Win32 port
+        shell: msys2 {0}
+        run: ./build_pc.sh
+      - name: Verify language-enabled executable
+        shell: msys2 {0}
+        run: |
+          EXE=pc/build32/bin/AnimalCrossing.exe
+          test -f "$EXE"
+          file "$EXE" | grep -qi 'PE32 executable'
+          strings "$EXE" | grep -q 'languages/%s/aram'
+          strings "$EXE" | grep -q 'missing resources fall back to English'
+          strings "$EXE" | grep -q 'message_data.bin'
+          ! find languages -type f \( -name '*.bin' -o -name '*.arc' -o -name '*.szs' \) -print -quit | grep -q .
+      - name: Package test build
+        shell: msys2 {0}
+        run: |
+          mkdir -p pc/build32/bin/languages/es/aram
+          cp languages/README.md pc/build32/bin/languages/
+          cp languages/es/manifest.ini pc/build32/bin/languages/es/
+          cp languages/es/aram/README.md pc/build32/bin/languages/es/aram/
+          cp docs/LANGUAGES_ES.md pc/build32/bin/
+          cd pc/build32/bin
+          zip -q -r "$GITHUB_WORKSPACE/Animal-Crossing-PC-Custom-Languages-Win32.zip" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Animal-Crossing-PC-Custom-Languages-Win32
+          path: Animal-Crossing-PC-Custom-Languages-Win32.zip
+          if-no-files-found: error
+          retention-days: 7
