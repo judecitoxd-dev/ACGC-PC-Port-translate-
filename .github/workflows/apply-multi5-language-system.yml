@@ -1,0 +1,53 @@
+name: Apply PAL Multi5 language system
+
+on:
+  push:
+    branches:
+      - pc-custom-languages
+    paths:
+      - ".github/workflows/apply-multi5-language-system.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pc-custom-languages
+          fetch-depth: 0
+      - name: Reconstruct and verify implementation
+        run: |
+          base64 --decode .multi5-build/acgc-multi5.patch.gz.b64 > "$RUNNER_TEMP/acgc-multi5.patch.gz"
+          gzip --decompress --stdout "$RUNNER_TEMP/acgc-multi5.patch.gz" > "$RUNNER_TEMP/acgc-multi5.patch"
+          echo "e00eee8e94574eaded0038ab75d91ca2ee3de7004ad8c5ac94c8c4300598f994  $RUNNER_TEMP/acgc-multi5.patch" | sha256sum -c -
+          patch --dry-run --batch -p1 < "$RUNNER_TEMP/acgc-multi5.patch"
+      - name: Apply and validate implementation
+        run: |
+          patch --batch -p1 < "$RUNNER_TEMP/acgc-multi5.patch"
+          python3 -m py_compile tools/pal_multi5_import.py tools/msg_tool.py tools/language_pack.py
+          grep -q 'pc_language_expand_custom_control' pc/src/pc_language.c
+          grep -q 'languages/%s/items' pc/src/pc_language.c
+          grep -q 'Francais' pc/src/pc_settings_menu.c
+          grep -q 'Deutsch' pc/src/pc_settings_menu.c
+          grep -q 'Italiano' pc/src/pc_settings_menu.c
+      - name: Commit source changes
+        run: |
+          git config user.name "judecitoxd-dev"
+          git config user.email "judecitoxd@gmail.com"
+          git add \
+            pc/include/pc_language.h \
+            pc/src/pc_language.c \
+            pc/src/pc_settings_menu.c \
+            src/game/m_font_main.c_inc \
+            src/game/m_msg_ctrl.c_inc \
+            src/game/m_msg_main.c_inc \
+            src/game/m_msg_cursol.c_inc \
+            src/game/m_choice_main.c_inc \
+            src/game/m_handbill.c \
+            tools/pal_multi5_import.py
+          git commit -m "Add complete PAL Multi5 language support"
+          git push origin HEAD:pc-custom-languages
