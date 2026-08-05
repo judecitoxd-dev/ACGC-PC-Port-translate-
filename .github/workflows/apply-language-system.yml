@@ -1,0 +1,45 @@
+name: Apply PC language system
+
+on:
+  push:
+    branches:
+      - pc-custom-languages
+    paths:
+      - ".github/workflows/apply-language-system.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pc-custom-languages
+          fetch-depth: 0
+      - name: Reconstruct and verify patch
+        run: |
+          base64 --decode .language-build/patch.part.00 > "$RUNNER_TEMP/language-system.patch.gz"
+          gzip --decompress --stdout "$RUNNER_TEMP/language-system.patch.gz" > "$RUNNER_TEMP/language-system.patch"
+          echo "eb2dcd1ba153759c19857b95dcc999a043b6ecd5cabaebe0ce841c498d603206  $RUNNER_TEMP/language-system.patch" | sha256sum -c -
+          patch --dry-run --batch -p1 < "$RUNNER_TEMP/language-system.patch"
+      - name: Apply implementation
+        run: |
+          patch --batch -p1 < "$RUNNER_TEMP/language-system.patch"
+          rm -rf .language-build
+          rm -f .github/workflows/apply-language-system.yml
+          python3 -m py_compile tools/msg_tool.py tools/language_pack.py
+          python3 tools/language_pack.py validate languages/es
+          grep -q 'pc_language_override_address' src/static/jsyswrap.cpp
+          grep -q 'language = en' pc/src/pc_settings.c
+          grep -q 'ITEM_LANGUAGE' pc/src/pc_settings_menu.c
+          ! find languages -type f \( -name '*.bin' -o -name '*.arc' -o -name '*.szs' \) -print -quit | grep -q .
+      - name: Commit implementation
+        run: |
+          git config user.name "judecitoxd-dev"
+          git config user.email "judecitoxd@gmail.com"
+          git add -A
+          git commit -m "Add ROM-safe custom language system for PC"
+          git push origin HEAD:pc-custom-languages
