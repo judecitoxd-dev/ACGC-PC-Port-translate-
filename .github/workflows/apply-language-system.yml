@@ -24,12 +24,12 @@ jobs:
           base64 --decode .language-build/patch.part.00 > "$RUNNER_TEMP/language-system.patch.gz"
           gzip --decompress --stdout "$RUNNER_TEMP/language-system.patch.gz" > "$RUNNER_TEMP/language-system.patch"
           echo "eb2dcd1ba153759c19857b95dcc999a043b6ecd5cabaebe0ce841c498d603206  $RUNNER_TEMP/language-system.patch" | sha256sum -c -
+          rm -f .github/workflows/build-language-pc.yml
           patch --dry-run --batch -p1 < "$RUNNER_TEMP/language-system.patch"
       - name: Apply implementation
         run: |
           patch --batch -p1 < "$RUNNER_TEMP/language-system.patch"
           rm -rf .language-build
-          rm -f .github/workflows/apply-language-system.yml
           python3 -m py_compile tools/msg_tool.py tools/language_pack.py
           python3 tools/language_pack.py validate languages/es
           grep -q 'pc_language_override_address' src/static/jsyswrap.cpp
