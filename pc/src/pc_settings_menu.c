@@ -320,13 +320,13 @@ static void item_cycle(int id, int dir) {
             s_pending.nes_aspect = !s_pending.nes_aspect;
             break;
         case ITEM_LANGUAGE: {
-            static const char* codes[] = { "en", "es", "fr", "de", "it" };
+            static const char* codes[] = { "en", "es", "fr", "de", "it", "tr" };
             int i;
             int current = 0;
-            for (i = 0; i < 5; i++) {
+            for (i = 0; i < 6; i++) {
                 if (strcmp(s_pending.language, codes[i]) == 0) { current = i; break; }
             }
-            current = (current + (dir > 0 ? 1 : 4)) % 5;
+            current = (current + (dir > 0 ? 1 : 5)) % 6;
             strcpy(s_pending.language, codes[current]);
         } break;
         case ITEM_MASTER_VOLUME: {
@@ -405,6 +405,7 @@ static void item_format(int id, char* buf, size_t n) {
             else if (strcmp(s_pending.language, "fr") == 0) snprintf(buf, n, "< Francais >");
             else if (strcmp(s_pending.language, "de") == 0) snprintf(buf, n, "< Deutsch >");
             else if (strcmp(s_pending.language, "it") == 0) snprintf(buf, n, "< Italiano >");
+            else if (strcmp(s_pending.language, "tr") == 0) snprintf(buf, n, "< Turkce >");
             else snprintf(buf, n, "< %s >", s_pending.language);
             break;
         case ITEM_MASTER_VOLUME:

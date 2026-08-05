@@ -2,6 +2,7 @@
 #include "pc_language.h"
 
 #include "jsyswrap.h"
+#include "dataobject.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -18,6 +19,7 @@
 #define PC_LANG_GRAMMAR_MASK  0xFF000000
 #define PC_LANG_ITEM_NAME_LEN 16u
 #define PC_LANG_CUSTOM_CMD 100u
+#define PC_LANG_FONT_SIZE 0x6000u
 
 /* Runtime asset arrays are writable on TARGET_PC and are initialized from the
  * user's USA disc before pc_language_init(). A PAL pack may safely replace
@@ -142,6 +144,9 @@ static PCLanguageNameBlock s_name_blocks[] = {
 };
 
 static int s_item_file_count = 0;
+static u8 s_original_font[PC_LANG_FONT_SIZE];
+static int s_original_font_saved = 0;
+static int s_custom_font_loaded = 0;
 static char s_code[PC_LANG_CODE_MAX + 1] = "en";
 static int s_external = 0;
 
@@ -208,6 +213,36 @@ static int load_file(const char* path, u8** out_data, u32* out_size) {
     fclose(f);
     *out_data = data;
     *out_size = (u32)length;
+    return 1;
+}
+
+static void restore_original_font(void) {
+    if (!s_original_font_saved) {
+        memcpy(s_original_font, FONT_nes_tex_font1, PC_LANG_FONT_SIZE);
+        s_original_font_saved = 1;
+    } else if (s_custom_font_loaded) {
+        memcpy(FONT_nes_tex_font1, s_original_font, PC_LANG_FONT_SIZE);
+    }
+    s_custom_font_loaded = 0;
+}
+
+static int load_custom_font(const char* code, u32* total) {
+    char path[PC_LANG_PATH_MAX];
+    u8* data = NULL;
+    u32 size = 0;
+    snprintf(path, sizeof(path), "languages/%s/font/FONT_nes_tex_font1.bin", code);
+    if (!load_file(path, &data, &size)) return 0;
+    if (size != PC_LANG_FONT_SIZE || *total + size > PC_LANG_MAX_TOTAL_SIZE) {
+        printf("[Language] Ignoring invalid custom font %s (expected %u bytes, got %u)\n",
+               path, (unsigned)PC_LANG_FONT_SIZE, (unsigned)size);
+        free(data);
+        return 0;
+    }
+    memcpy(FONT_nes_tex_font1, data, size);
+    free(data);
+    *total += size;
+    s_custom_font_loaded = 1;
+    printf("[Language] Loaded custom font for '%s'\n", code);
     return 1;
 }
 
@@ -352,6 +387,7 @@ static int name_record_matches(const u8* record, const u8* str, int len) {
 static int grammar_choice_from_class(int packed, int alternatives) {
     int grammar_class;
     if (alternatives <= 1) return 0;
+    if (strcmp(s_code, "tr") == 0) return 0; /* Turkish has no grammatical gender/articles. */
     if (!pc_language_grammar_is_packed(packed)) {
         return (strcmp(s_code, "de") == 0) ? 0 : alternatives - 1;
     }
@@ -393,6 +429,7 @@ void pc_language_init(const char* code) {
 
     clear_resources();
     clear_item_language();
+    restore_original_font();
     strcpy(s_code, "en");
     s_external = 0;
 
@@ -407,6 +444,7 @@ void pc_language_init(const char* code) {
         return;
     }
 
+    load_custom_font(s_code, &total);
     snprintf(base, sizeof(base), "languages/%s/aram", s_code);
     for (i = 0; i < sizeof(s_pairs) / sizeof(s_pairs[0]); i++) {
         load_pair(base, s_pairs[i][0], s_pairs[i][1], &total);
@@ -419,18 +457,19 @@ void pc_language_init(const char* code) {
     for (i = 0; i < sizeof(s_resources) / sizeof(s_resources[0]); i++) {
         if (s_resources[i].enabled) enabled_count++;
     }
-    if (enabled_count == 0 && s_item_file_count == 0) {
+    if (enabled_count == 0 && s_item_file_count == 0 && !s_custom_font_loaded) {
         printf("[Language] No valid resources found for '%s'; using English ROM data\n", s_code);
         return;
     }
     s_external = 1;
-    printf("[Language] Loaded '%s': %d ARAM resources, %d item tables, %u bytes; missing resources fall back to English\n",
-           s_code, enabled_count, s_item_file_count, total);
+    printf("[Language] Loaded '%s': %d ARAM resources, %d item tables, font=%s, %u bytes; missing resources fall back to English\n",
+           s_code, enabled_count, s_item_file_count, s_custom_font_loaded ? "custom" : "ROM", total);
 }
 
 void pc_language_shutdown(void) {
     clear_resources();
     clear_item_language();
+    restore_original_font();
     s_external = 0;
     strcpy(s_code, "en");
 }

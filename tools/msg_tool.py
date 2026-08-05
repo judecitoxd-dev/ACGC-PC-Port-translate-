@@ -227,12 +227,12 @@ CHAR_MAP = [
     "\u00dc",
     "Ỳ",
     "ꟓ",
-    "\u00df",
-    "\u00e0",
-    "\u00e1",
-    "\u00e2",
-    "\u00e3",
-    "\u00e4",
+    "ğ",  # 223 Turkish g-breve
+    "Ğ",  # 224 Turkish G-breve
+    "ş",  # 225 Turkish s-cedilla
+    "Ş",  # 226 Turkish S-cedilla
+    "ı",  # 227 Turkish dotless i
+    "İ",  # 228 Turkish dotted I
     "\u00e5",
     "\u00e6",
     "\u00e7",

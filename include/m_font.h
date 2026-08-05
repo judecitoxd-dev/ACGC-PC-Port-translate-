@@ -236,12 +236,12 @@ extern "C" {
 #define CHAR_ORDINAL_re 221
 #define CHAR_BACKSLASH 222
 /* Unused characters */
-#define CHAR_223 223
-#define CHAR_224 224
-#define CHAR_225 225
-#define CHAR_226 226
-#define CHAR_227 227
-#define CHAR_228 228
+#define CHAR_BREVE_g 223 /* Turkish ğ */
+#define CHAR_BREVE_G 224 /* Turkish Ğ */
+#define CHAR_CEDILLA_s 225 /* Turkish ş */
+#define CHAR_CEDILLA_S 226 /* Turkish Ş */
+#define CHAR_DOTLESS_i 227 /* Turkish ı */
+#define CHAR_DOTTED_I 228 /* Turkish İ */
 #define CHAR_229 229
 #define CHAR_230 230
 #define CHAR_231 231

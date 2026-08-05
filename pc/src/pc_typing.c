@@ -93,6 +93,22 @@ int pc_utf8_to_game_code(const char* text) {
         return -1;
     }
 
+    /* 3-byte UTF-8: Turkish letters added by the external Turkish font. */
+    if (c >= 0xE0 && c <= 0xEF) {
+        unsigned char c2 = (unsigned char)text[1];
+        unsigned char c3 = (unsigned char)text[2];
+        int cp;
+        if ((c2 & 0xC0) != 0x80 || (c3 & 0xC0) != 0x80) return -1;
+        cp = ((c & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F);
+        if (cp == 0x011F) return CHAR_BREVE_g;
+        if (cp == 0x011E) return CHAR_BREVE_G;
+        if (cp == 0x015F) return CHAR_CEDILLA_s;
+        if (cp == 0x015E) return CHAR_CEDILLA_S;
+        if (cp == 0x0131) return CHAR_DOTLESS_i;
+        if (cp == 0x0130) return CHAR_DOTTED_I;
+        return -1;
+    }
+
     return -1;
 }
 
