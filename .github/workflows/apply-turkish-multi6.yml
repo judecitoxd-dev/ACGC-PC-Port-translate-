@@ -1,0 +1,43 @@
+name: Apply Turkish Multi6 support
+
+on:
+  push:
+    branches:
+      - pc-custom-languages
+    paths:
+      - '.github/workflows/apply-turkish-multi6.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pc-custom-languages
+          fetch-depth: 0
+      - name: Reconstruct and verify patch
+        run: |
+          base64 --decode .multi6-build/turkish.patch.gz.b64 > "$RUNNER_TEMP/turkish.patch.gz"
+          gzip -dc "$RUNNER_TEMP/turkish.patch.gz" > "$RUNNER_TEMP/turkish.patch"
+          echo '5b901778bafb4f300e72a3eb27ed4f4a5b20d2017b540e962c45efd47e1550b0  '"$RUNNER_TEMP/turkish.patch" | sha256sum -c -
+          patch --dry-run --batch -p1 < "$RUNNER_TEMP/turkish.patch"
+      - name: Apply Turkish support
+        run: |
+          patch --batch -p1 < "$RUNNER_TEMP/turkish.patch"
+          python3 -m py_compile tools/msg_tool.py
+          grep -q 'CHAR_BREVE_g' include/m_font.h
+          grep -q 'Turkce' pc/src/pc_settings_menu.c
+          grep -q 'languages/%s/font/FONT_nes_tex_font1.bin' pc/src/pc_language.c
+          grep -q 'Turkish has no grammatical gender' pc/src/pc_language.c
+          rm -rf .multi6-build
+      - name: Commit implementation
+        run: |
+          git config user.name 'judecitoxd-dev'
+          git config user.email 'judecitoxd@gmail.com'
+          git add -A
+          git commit -m 'Add Turkish language, font and neutral grammar support'
+          git push origin HEAD:pc-custom-languages
