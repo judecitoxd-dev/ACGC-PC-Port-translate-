@@ -1,0 +1,37 @@
+name: Language system audit
+
+on:
+  push:
+    branches:
+      - pc-custom-languages
+    paths:
+      - ".github/workflows/language-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate text, ARAM and font loaders
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "# Candidate source files"
+            find . -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.py' -o -name '*.inc' \) | sort
+            echo
+            echo "# Symbol and resource matches"
+            grep -RInE --exclude-dir=.git \
+              'message_data|message_data_table|string_data|string_data_table|mail_data|select_data|npc_name_str|FONT_nes|font_offset|JW_GetAramAddress|GetResourceAram|ResourceAram|MSGTIMEEND|MSGCONTINUE|foresta\.rel\.szs|ARAM' . || true
+          } > language-audit.txt
+          wc -l language-audit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: language-audit
+          path: language-audit.txt
+          if-no-files-found: error
+          retention-days: 7
