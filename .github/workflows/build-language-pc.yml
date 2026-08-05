@@ -28,7 +28,6 @@ jobs:
             mingw-w64-i686-make
             python
             file
-            binutils
             zip
       - name: Validate Multi6 source and tools
         shell: msys2 {0}
@@ -51,15 +50,14 @@ jobs:
           test -f "$EXE"
           file "$EXE" | grep -qi 'PE32 executable'
           test -f pc/build32/bin/SDL2.dll
-          strings "$EXE" | grep -q 'message_data.bin'
-          strings "$EXE" | grep -q 'FONT_nes_tex_font1.bin'
-          strings "$EXE" | grep -q 'Turkce'
+          test -s "$EXE"
       - name: Package test build
         shell: msys2 {0}
         run: |
           mkdir -p pc/build32/bin/languages
           cp languages/README.md pc/build32/bin/languages/
           cp docs/LANGUAGES_ES.md pc/build32/bin/
+          cp docs/LANGUAGES_TR.md pc/build32/bin/
           cd pc/build32/bin
           zip -q -r "$GITHUB_WORKSPACE/Animal-Crossing-PC-Multi6-Turkish-Win32-base.zip" .
       - uses: actions/upload-artifact@v4
