@@ -1,0 +1,31 @@
+name: Build RVZ extraction helper
+
+on:
+  push:
+    branches:
+      - pc-custom-languages
+    paths:
+      - ".github/workflows/build-nodtool-helper.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  helper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download verified nodtool release
+        run: |
+          curl -L --fail --retry 3 \
+            https://github.com/encounter/nod/releases/download/v2.0.0-alpha.10/nodtool-linux-x86_64 \
+            -o nodtool
+          echo "f853b83268b9542faf0d28815bc3a23c090ae28ebf397e46f99cbb08122c8307  nodtool" | sha256sum -c -
+          chmod +x nodtool
+          ./nodtool --help >/dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nodtool-linux-x86_64
+          path: nodtool
+          if-no-files-found: error
+          retention-days: 3
