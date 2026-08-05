@@ -1,0 +1,31 @@
+name: Current language source snapshot
+
+on:
+  push:
+    branches:
+      - pc-custom-languages
+    paths:
+      - ".github/workflows/current-language-source-snapshot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pc-custom-languages
+          submodules: recursive
+      - name: Package current source
+        run: |
+          rm -rf .git
+          zip -q -r ACGC-PC-current-language-source.zip . -x 'ACGC-PC-current-language-source.zip'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ACGC-PC-current-language-source
+          path: ACGC-PC-current-language-source.zip
+          if-no-files-found: error
+          retention-days: 3
