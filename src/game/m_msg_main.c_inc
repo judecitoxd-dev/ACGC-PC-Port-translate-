@@ -1,3 +1,7 @@
+#ifdef TARGET_PC
+#include "pc_language.h"
+#endif
+
 static int mMsg_Set_SizeCode(mMsg_Window_c* msg_p, int idx) {
     return mFont_CodeSize_idx_get(msg_p->msg_data->text_buf.data, idx);
 }
@@ -764,6 +768,9 @@ extern int mMsg_CopyFree(mMsg_Window_c* msg_p, int str_no, u8* data, int start_i
         mMsg_CopyString(&data[start_idx], free_str_p, free_str_len);
 
         article = article != mIN_ARTICLE_NUM ? article : msg_p->free_str_article[str_no];
+#ifdef TARGET_PC
+        if (pc_language_grammar_is_packed(article)) article = mIN_ARTICLE_NONE;
+#endif
         if (article != mIN_ARTICLE_NONE) {
             u8 article_str[mIN_ITEM_NAME_LEN + 1];
             int article_len;
@@ -917,6 +924,9 @@ extern int mMsg_CopyItem(mMsg_Window_c* msg_p, int str_no, u8* data, int start_i
         mMsg_CopyString(&data[start_idx], free_str_p, free_str_len);
 
         article = article != mIN_ARTICLE_NUM ? article : msg_p->item_str_article[str_no];
+#ifdef TARGET_PC
+        if (pc_language_grammar_is_packed(article)) article = mIN_ARTICLE_NONE;
+#endif
         if (article != mIN_ARTICLE_NONE) {
             u8 article_str[mIN_ITEM_NAME_LEN + 1];
 

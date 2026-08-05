@@ -172,7 +172,11 @@ extern int mFont_CodeSize_get(u8* str) {
 
   if (c0 == CHAR_CONTROL_CODE) {
     c1 = *(str + 1);
-    if (c1 >= 0 && c1 < mFont_CONT_CODE_NUM) {
+    if (c1 == mFont_CONT_CODE_AGB_DUMMY0 && *(str + 2) >= 5) {
+      /* PC PAL Multi5 grammar control: byte 2 stores its full size. */
+      size = *(str + 2);
+    }
+    else if (c1 >= 0 && c1 < mFont_CONT_CODE_NUM) {
       size = mFont_cont_info_tbl[c1].size;
     }
     else {

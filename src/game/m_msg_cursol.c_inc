@@ -1,3 +1,7 @@
+#ifdef TARGET_PC
+#include "pc_language.h"
+#endif
+
 static int mMsg_Check_CancelOrder(mMsg_Window_c* msg_p) {
   if (msg_p->cancelable_flag != FALSE && msg_p->cancel_flag == FALSE && (msg_p->status_flags & mMsg_STATUS_FLAG_CURSOL_JUST) == 0) {
     if (chkTrigger(BUTTON_A) || chkTrigger(BUTTON_B)) {
@@ -875,6 +879,30 @@ static int mMsg_Main_Cursol_SetNextMessageRamdomSection_ControlCursol(mMsg_Windo
   return mMsg_RESULT_VOID;
 }
 
+static int mMsg_Main_Cursol_LanguageGrammar_ControlCursol(mMsg_Window_c* msg_p, int* idx_p) {
+#ifdef TARGET_PC
+  u8* data = msg_p->msg_data->text_buf.data;
+  int selector = data[*idx_p + 3];
+  int free_grammar = PC_LANGUAGE_GRAMMAR_NONE;
+  int item_grammar = PC_LANGUAGE_GRAMMAR_NONE;
+  int old_len = msg_p->msg_data->msg_len;
+  int new_len;
+  if (selector >= 0x1E && selector <= 0x31)
+    free_grammar = msg_p->free_str_article[selector - 0x1E];
+  else if (selector >= 0x32 && selector <= 0x36)
+    item_grammar = msg_p->item_str_article[selector - 0x32];
+  new_len = pc_language_expand_custom_control(
+      data, *idx_p, old_len, free_grammar, item_grammar,
+      Common_Get(now_private)->gender != mPr_SEX_MALE);
+  if (new_len != old_len) {
+    msg_p->msg_data->msg_len = new_len;
+    return mMsg_RESULT_VOID;
+  }
+#endif
+  (*idx_p) += mMsg_Set_SizeCode(msg_p, *idx_p);
+  return mMsg_RESULT_VOID;
+}
+
 static int mMsg_Main_Cursol_AgbDummy_ControlCursol(mMsg_Window_c* msg_p, int* idx_p) {
   (*idx_p) += mMsg_Set_SizeCode(msg_p, *idx_p);
   return mMsg_RESULT_VOID;
@@ -1058,7 +1086,7 @@ static int mMsg_Main_Cursol_Proc_ControlCursol(mMsg_Window_c* msg_p, int* idx_p)
       &mMsg_Main_Cursol_SetMessageContentsGloomy_ControlCursol,
       &mMsg_Main_Cursol_SelectNoBClose_ControlCursol,
       &mMsg_Main_Cursol_SetNextMessageRamdomSection_ControlCursol,
-      &mMsg_Main_Cursol_AgbDummy_ControlCursol,
+      &mMsg_Main_Cursol_LanguageGrammar_ControlCursol,
       &mMsg_Main_Cursol_AgbDummy_ControlCursol,
       &mMsg_Main_Cursol_AgbDummy_ControlCursol,
       &mMsg_Main_Cursol_Space_ControlCursol,

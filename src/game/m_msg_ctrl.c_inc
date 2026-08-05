@@ -1,3 +1,7 @@
+#ifdef TARGET_PC
+#include "pc_language.h"
+#endif
+
 extern mMsg_Window_c* mMsg_Get_base_window_p() {
   return &mMsg_window;
 }
@@ -174,33 +178,31 @@ static int mMsg_request_main_cursol(mMsg_Window_c* msg_p, int wait_flag, int req
 extern void mMsg_Set_free_str(mMsg_Window_c* msg_p, int free_str_no, u8* str, int str_len) {
   if (free_str_no >= mMsg_FREE_STR0 && free_str_no < mMsg_FREE_STR_NUM && str != NULL) {
     int i;
+    int grammar = PC_LANGUAGE_GRAMMAR_NONE;
+    const u8* source = str;
     u8* free_str = msg_p->free_str[free_str_no];
 
-    if (str_len > mMsg_FREE_STRING_LEN) {
-      str_len = mMsg_FREE_STRING_LEN;
+#ifdef TARGET_PC
+    grammar = pc_language_strip_grammar_prefix(&source, &str_len);
+    if (!pc_language_grammar_is_packed(grammar)) {
+      grammar = pc_language_grammar_for_name(source, str_len);
     }
-
+#endif
+    if (str_len > mMsg_FREE_STRING_LEN) str_len = mMsg_FREE_STRING_LEN;
     for (i = 0; i < mMsg_FREE_STRING_LEN; i++) {
-      if (i < str_len) {
-        free_str[i] = str[i];
-      }
-      else {
-        free_str[i] = CHAR_SPACE;
-      }
+      free_str[i] = i < str_len ? source[i] : CHAR_SPACE;
     }
-
+#ifdef TARGET_PC
+    msg_p->free_str_article[free_str_no] =
+        pc_language_grammar_is_packed(grammar) ? grammar : mIN_ARTICLE_NONE;
+#else
     msg_p->free_str_article[free_str_no] = mIN_ARTICLE_NONE;
+#endif
   }
 
-  if (free_str_no == mMsg_FREE_STR1) {
-    msg_p->free_str_color_idx[0] = 0;
-  }
-  else if (free_str_no == mMsg_FREE_STR2) {
-    msg_p->free_str_color_idx[1] = 0;
-  }
-  else if (free_str_no == mMsg_FREE_STR5) {
-    msg_p->free_str_color_idx[2] = 0;
-  }
+  if (free_str_no == mMsg_FREE_STR1) msg_p->free_str_color_idx[0] = 0;
+  else if (free_str_no == mMsg_FREE_STR2) msg_p->free_str_color_idx[1] = 0;
+  else if (free_str_no == mMsg_FREE_STR5) msg_p->free_str_color_idx[2] = 0;
 }
 
 extern void mMsg_Set_free_str_cl(mMsg_Window_c* msg_p, int str_no, u8* str_p, int str_len, int cl_id) {
@@ -215,45 +217,51 @@ extern void mMsg_Set_free_str_cl_art(mMsg_Window_c* msg_p, int str_no, u8* str_p
   mMsg_Set_free_str(msg_p, str_no, str_p, str_len);
 
   if (cl_id != 0) {
-    if (str_no == mMsg_FREE_STR1) {
-      msg_p->free_str_color_idx[0] = cl_id;
-    }
-    else if (str_no == mMsg_FREE_STR2) {
-      msg_p->free_str_color_idx[1] = cl_id;
-    }
-    else if (str_no == mMsg_FREE_STR5) {
-      msg_p->free_str_color_idx[2] = cl_id;
-    }
+    if (str_no == mMsg_FREE_STR1) msg_p->free_str_color_idx[0] = cl_id;
+    else if (str_no == mMsg_FREE_STR2) msg_p->free_str_color_idx[1] = cl_id;
+    else if (str_no == mMsg_FREE_STR5) msg_p->free_str_color_idx[2] = cl_id;
   }
-
+#ifdef TARGET_PC
+  if (!pc_language_is_external() ||
+      !pc_language_grammar_is_packed(msg_p->free_str_article[str_no])) {
+    msg_p->free_str_article[str_no] = pc_language_is_external() ? mIN_ARTICLE_NONE : article;
+  }
+#else
   msg_p->free_str_article[str_no] = article;
+#endif
 }
 
 extern void mMsg_Set_item_str(mMsg_Window_c* msg_p, int item_str_no, u8* str, int str_len) {
   if (item_str_no >= mMsg_ITEM_STR0 && item_str_no < mMsg_ITEM_STR_NUM && str != NULL) {
     int i;
-    u8* free_str = msg_p->item_str[item_str_no];
-
-    if (str_len > mIN_ITEM_NAME_LEN) {
-      str_len = mIN_ITEM_NAME_LEN;
-    }
-
-    for (i = 0; i < mIN_ITEM_NAME_LEN; i++) {
-      if (i < str_len) {
-        free_str[i] = str[i];
-      }
-      else {
-        free_str[i] = CHAR_SPACE;
-      }
-    }
-
+    int grammar = PC_LANGUAGE_GRAMMAR_NONE;
+    const u8* source = str;
+    u8* item_str = msg_p->item_str[item_str_no];
+#ifdef TARGET_PC
+    grammar = pc_language_strip_grammar_prefix(&source, &str_len);
+    if (!pc_language_grammar_is_packed(grammar)) grammar = pc_language_grammar_for_name(source, str_len);
+#endif
+    if (str_len > mIN_ITEM_NAME_LEN) str_len = mIN_ITEM_NAME_LEN;
+    for (i = 0; i < mIN_ITEM_NAME_LEN; i++) item_str[i] = i < str_len ? source[i] : CHAR_SPACE;
+#ifdef TARGET_PC
+    msg_p->item_str_article[item_str_no] =
+        pc_language_grammar_is_packed(grammar) ? grammar : mIN_ARTICLE_NONE;
+#else
     msg_p->item_str_article[item_str_no] = mIN_ARTICLE_NONE;
+#endif
   }
 }
 
 extern void mMsg_Set_item_str_art(mMsg_Window_c* msg_p, int item_str_no, u8* str, int str_len, int article) {
   mMsg_Set_item_str(msg_p, item_str_no, str, str_len);
+#ifdef TARGET_PC
+  if (!pc_language_is_external() ||
+      !pc_language_grammar_is_packed(msg_p->item_str_article[item_str_no])) {
+    msg_p->item_str_article[item_str_no] = pc_language_is_external() ? mIN_ARTICLE_NONE : article;
+  }
+#else
   msg_p->item_str_article[item_str_no] = article;
+#endif
 }
 
 /* @unused extern void mMsg_Get_free_str(mMsg_Window_c* msg_p, int free_str_no, u8* str?) */

@@ -1,3 +1,7 @@
+#ifdef TARGET_PC
+#include "pc_language.h"
+#endif
+
 extern mChoice_c* mChoice_Get_base_window_p() {
     return &mMsg_Get_base_window_p()->choice_window;
 }
@@ -364,6 +368,24 @@ static int mChoice_Put_String_AMPM(u8* data, int idx, int max_size, ACTOR* actor
 
 typedef int (*mChoice_PUT_STRING_PROC)(u8*, int, int, ACTOR*);
 
+static int mChoice_Put_LanguageGrammar(u8* data, int idx, int max_size, ACTOR* actor) {
+#ifdef TARGET_PC
+    mMsg_Window_c* msg_p = mMsg_Get_base_window_p();
+    int selector = data[idx + 3];
+    int free_grammar = PC_LANGUAGE_GRAMMAR_NONE;
+    int item_grammar = PC_LANGUAGE_GRAMMAR_NONE;
+    if (selector >= 0x1E && selector <= 0x31)
+        free_grammar = msg_p->free_str_article[selector - 0x1E];
+    else if (selector >= 0x32 && selector <= 0x36)
+        item_grammar = msg_p->item_str_article[selector - 0x32];
+    return pc_language_expand_custom_control(
+        data, idx, max_size, free_grammar, item_grammar,
+        Common_Get(now_private)->gender != mPr_SEX_MALE);
+#else
+    return max_size;
+#endif
+}
+
 static int mChoice_Put_String(u8* data, int idx, int max_size, ACTOR* actor) {
     static const mChoice_PUT_STRING_PROC proc[mFont_CONT_CODE_NUM] = {
         NULL,
@@ -466,7 +488,7 @@ static int mChoice_Put_String(u8* data, int idx, int max_size, ACTOR* actor) {
         NULL,
         NULL,
         NULL,
-        NULL,
+        &mChoice_Put_LanguageGrammar,
         NULL,
         NULL,
         NULL,
@@ -488,8 +510,7 @@ static int mChoice_Put_String(u8* data, int idx, int max_size, ACTOR* actor) {
         NULL,
         NULL,
         NULL,
-        NULL,
-    };
+        NULL,    };
 
     int type = data[idx + 1];
 

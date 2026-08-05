@@ -21,6 +21,19 @@ int pc_language_read_aram(u32 address, u8* dst, u32 size);
 const char* pc_language_code(void);
 int pc_language_is_external(void);
 
+/* PAL Multi5 grammar bridge. Grammar values are stored in otherwise-unused
+ * article fields only on PC and are never written to save data. */
+#define PC_LANGUAGE_GRAMMAR_NONE (-1)
+int pc_language_strip_grammar_prefix(const u8** str, int* len);
+int pc_language_grammar_for_name(const u8* str, int len);
+int pc_language_grammar_is_packed(int value);
+
+/* Replaces one custom AGB_DUMMY0 grammar control with the selected text.
+ * The returned value is the new buffer length. */
+int pc_language_expand_custom_control(u8* data, int idx, int len,
+                                      int free_grammar, int item_grammar,
+                                      int player_is_female);
+
 #ifdef __cplusplus
 }
 #endif

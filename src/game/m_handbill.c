@@ -5,6 +5,11 @@
 #include "m_string.h"
 #include "m_font.h"
 #include "libultra/libultra.h"
+#ifdef TARGET_PC
+#include "pc_language.h"
+#include "m_common_data.h"
+#include "m_private.h"
+#endif
 
 static u32 Ps_table_rom_start;
 static u32 Ps_rom_start;
@@ -54,43 +59,35 @@ static void mHandbill_load_init() {
 
 extern void mHandbill_Set_free_str(int str_num, u8* str, int str_len) {
     int i;
-    int j;
+    int grammar = PC_LANGUAGE_GRAMMAR_NONE;
+    const u8* source = str;
     u8* free_str;
-    mHandbill_Data_c* handbill_data;
-
-    if (str_num < 0) {
-        return;
-    }
-
-    if (str_num >= mHandbill_FREE_STR_NUM) {
-        return;
-    }
-
-    if (str == NULL) {
-        return;
-    }
-
-    handbill_data = &mHandbill_data;
-    free_str = handbill_data->free_str[str_num];
-
-    if (str_len > mHandbill_FREE_STR_LEN) {
-        str_len = mHandbill_FREE_STR_LEN;
-    }
-
-    for (i = 0; i < str_len; i++) {
-        free_str[i] = str[i];
-    }
-
-    for (j = i; j < mHandbill_FREE_STR_LEN; j++) {
-        free_str[j] = CHAR_SPACE;
-    }
-
-    handbill_data->free_str_art[str_num] = mIN_ARTICLE_NONE;
+    if (str_num < 0 || str_num >= mHandbill_FREE_STR_NUM || str == NULL) return;
+#ifdef TARGET_PC
+    grammar = pc_language_strip_grammar_prefix(&source, &str_len);
+    if (!pc_language_grammar_is_packed(grammar)) grammar = pc_language_grammar_for_name(source, str_len);
+#endif
+    free_str = mHandbill_data.free_str[str_num];
+    if (str_len > mHandbill_FREE_STR_LEN) str_len = mHandbill_FREE_STR_LEN;
+    for (i = 0; i < mHandbill_FREE_STR_LEN; i++) free_str[i] = i < str_len ? source[i] : CHAR_SPACE;
+#ifdef TARGET_PC
+    mHandbill_data.free_str_art[str_num] =
+        pc_language_grammar_is_packed(grammar) ? grammar : mIN_ARTICLE_NONE;
+#else
+    mHandbill_data.free_str_art[str_num] = mIN_ARTICLE_NONE;
+#endif
 }
 
 extern void mHandbill_Set_free_str_art(int str_num, u8* str, int str_len, int article) {
     mHandbill_Set_free_str(str_num, str, str_len);
+#ifdef TARGET_PC
+    if (!pc_language_is_external() ||
+        !pc_language_grammar_is_packed(mHandbill_data.free_str_art[str_num])) {
+        mHandbill_data.free_str_art[str_num] = pc_language_is_external() ? mIN_ARTICLE_NONE : article;
+    }
+#else
     mHandbill_data.free_str_art[str_num] = article;
+#endif
 }
 
 static void mHandbill_CopyString(u8* dst, u8* src, int len) {
@@ -178,6 +175,9 @@ static int mHandbill_Put_String_FREE(u8* str, int buf_size, int start_idx, int s
             article = mHandbill_data.free_str_art[str_no];
             break;
     }
+#ifdef TARGET_PC
+    if (pc_language_grammar_is_packed(article)) article = mIN_ARTICLE_NONE;
+#endif
 
     if (article != mIN_ARTICLE_NONE) {
         u8 article_buf[32];
@@ -298,6 +298,20 @@ static int mHandbill_Capital_Letter(u8* buf, int buf_size, int start_idx, int st
 
 typedef int (*mHandbill_PUT_STRING_PROC)(u8*, int, int, int, int);
 
+static int mHandbill_Put_LanguageGrammar(u8* buf, int buf_size, int start_idx, int str_len, int fill_type) {
+#ifdef TARGET_PC
+    int selector = buf[start_idx + 3];
+    int free_grammar = PC_LANGUAGE_GRAMMAR_NONE;
+    if (selector >= 0x1E && selector <= 0x31)
+        free_grammar = mHandbill_data.free_str_art[selector - 0x1E];
+    return pc_language_expand_custom_control(
+        buf, start_idx, str_len, free_grammar, PC_LANGUAGE_GRAMMAR_NONE,
+        Common_Get(now_private)->gender != mPr_SEX_MALE);
+#else
+    return str_len;
+#endif
+}
+
 static int mHandbill_Put_String(u8* buf, int buf_size, int start_idx, int str_len, int fill_type) {
     static const mHandbill_PUT_STRING_PROC proc[mFont_CONT_CODE_NUM] = { NULL,
                                                                          NULL,
@@ -399,7 +413,7 @@ static int mHandbill_Put_String(u8* buf, int buf_size, int start_idx, int str_le
                                                                          NULL,
                                                                          NULL,
                                                                          NULL,
-                                                                         NULL,
+                                                                         &mHandbill_Put_LanguageGrammar,
                                                                          NULL,
                                                                          NULL,
                                                                          NULL,

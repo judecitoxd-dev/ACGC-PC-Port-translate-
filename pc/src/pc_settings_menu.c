@@ -319,12 +319,16 @@ static void item_cycle(int id, int dir) {
         case ITEM_NES_ASPECT:
             s_pending.nes_aspect = !s_pending.nes_aspect;
             break;
-        case ITEM_LANGUAGE:
-            if (strcmp(s_pending.language, "en") == 0)
-                strcpy(s_pending.language, "es");
-            else
-                strcpy(s_pending.language, "en");
-            break;
+        case ITEM_LANGUAGE: {
+            static const char* codes[] = { "en", "es", "fr", "de", "it" };
+            int i;
+            int current = 0;
+            for (i = 0; i < 5; i++) {
+                if (strcmp(s_pending.language, codes[i]) == 0) { current = i; break; }
+            }
+            current = (current + (dir > 0 ? 1 : 4)) % 5;
+            strcpy(s_pending.language, codes[current]);
+        } break;
         case ITEM_MASTER_VOLUME: {
             int v = s_pending.master_volume + (dir > 0 ? 10 : -10);
             if (v < 0)   v = 0;
@@ -396,12 +400,12 @@ static void item_format(int id, char* buf, size_t n) {
             snprintf(buf, n, "%s", s_pending.nes_aspect ? "< 4:3 >" : "< Stretch >");
             break;
         case ITEM_LANGUAGE:
-            if (strcmp(s_pending.language, "en") == 0)
-                snprintf(buf, n, "< English >");
-            else if (strcmp(s_pending.language, "es") == 0)
-                snprintf(buf, n, "< Espanol >");
-            else
-                snprintf(buf, n, "< %s >", s_pending.language);
+            if (strcmp(s_pending.language, "en") == 0) snprintf(buf, n, "< English >");
+            else if (strcmp(s_pending.language, "es") == 0) snprintf(buf, n, "< Espanol >");
+            else if (strcmp(s_pending.language, "fr") == 0) snprintf(buf, n, "< Francais >");
+            else if (strcmp(s_pending.language, "de") == 0) snprintf(buf, n, "< Deutsch >");
+            else if (strcmp(s_pending.language, "it") == 0) snprintf(buf, n, "< Italiano >");
+            else snprintf(buf, n, "< %s >", s_pending.language);
             break;
         case ITEM_MASTER_VOLUME:
             snprintf(buf, n, "< %d%% >", s_pending.master_volume);
