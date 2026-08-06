@@ -1,0 +1,143 @@
+name: Fix western town name suffix
+
+on:
+  push:
+    branches:
+      - pc-custom-languages
+    paths:
+      - ".github/workflows/fix-western-town-name-suffix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pc-custom-languages
+          fetch-depth: 0
+      - name: Disable Japanese mura suffix on PC
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/game/m_land.c')
+          s = p.read_text()
+          old = '''extern int mLd_AddMuraString(u8* name, int name_len) {
+              u8 buf[16];
+              int size;
+
+              mString_Load_StringFromRom(buf, 16, 484); /* TODO: str_no should probably be enum or something */
+              size = mMsg_Get_Length_String(buf, 16);
+              mem_copy(name + name_len, buf, size);
+
+              return size + name_len;
+          }
+          '''
+          new = '''extern int mLd_AddMuraString(u8* name, int name_len) {
+          #ifdef TARGET_PC
+              /* Western town names never receive the Japanese "mura" suffix.
+               * PAL string slot 484 is an ordinary localized string. */
+              (void)name;
+              return name_len;
+          #else
+              u8 buf[16];
+              int size;
+
+              mString_Load_StringFromRom(buf, 16, 484); /* TODO: str_no should probably be enum or something */
+              size = mMsg_Get_Length_String(buf, 16);
+              mem_copy(name + name_len, buf, size);
+
+              return size + name_len;
+          #endif
+          }
+          '''
+          if old not in s:
+              raise SystemExit('m_land.c pattern not found')
+          p.write_text(s.replace(old, new))
+
+          p = Path('src/game/m_msg_main.c_inc')
+          s = p.read_text()
+          old = '''extern int mMsg_CopyCountryName(u8* data, int start_idx, int len, u32 capitalize) {
+              int new_len;
+              int new_start_idx;
+              int command_len = mFont_CodeSize_idx_get(data, start_idx);
+              u8* land_name = mLd_GetLandName();
+              int land_name_len = mMsg_Get_Length_String(land_name, LAND_NAME_SIZE);
+
+              new_start_idx = start_idx + land_name_len;
+              new_len = mMsg_MoveDataCut(data, start_idx + land_name_len, start_idx + command_len, len, FALSE);
+
+              mMsg_CopyString(&data[start_idx], land_name, land_name_len);
+
+          // This entire block can be removed in the English version
+          #ifndef IMPROVEMENTS
+              /* Leftover from JP to add 'むら' (mura) to the town name */
+              {
+                  u8 mura_str[mMsg_FREE_STRING_LEN];
+                  u8* mura_str_p = mura_str;
+                  int mura_size;
+
+                  mString_Load_StringFromRom(mura_str_p, sizeof(mura_str), 0x1E4);
+                  mura_size = mMsg_Get_Length_String(mura_str_p, sizeof(mura_str));
+                  new_len = mMsg_MoveDataCut(data, new_start_idx + mura_size, new_start_idx, new_len, FALSE);
+                  mMsg_CopyString(&data[new_start_idx], mura_str_p, mura_size);
+              }
+          #endif
+
+              if (capitalize) {
+          '''
+          new = '''extern int mMsg_CopyCountryName(u8* data, int start_idx, int len, u32 capitalize) {
+              int new_len;
+              int command_len = mFont_CodeSize_idx_get(data, start_idx);
+              u8* land_name = mLd_GetLandName();
+              int land_name_len = mMsg_Get_Length_String(land_name, LAND_NAME_SIZE);
+
+              new_len = mMsg_MoveDataCut(data, start_idx + land_name_len, start_idx + command_len, len, FALSE);
+
+              mMsg_CopyString(&data[start_idx], land_name, land_name_len);
+
+          #if !defined(IMPROVEMENTS) && !defined(TARGET_PC)
+              /* Leftover from JP to add 'むら' (mura) to the town name.
+               * Never run it in the international PC port. */
+              {
+                  int new_start_idx = start_idx + land_name_len;
+                  u8 mura_str[mMsg_FREE_STRING_LEN];
+                  u8* mura_str_p = mura_str;
+                  int mura_size;
+
+                  mString_Load_StringFromRom(mura_str_p, sizeof(mura_str), 0x1E4);
+                  mura_size = mMsg_Get_Length_String(mura_str_p, sizeof(mura_str));
+                  new_len = mMsg_MoveDataCut(data, new_start_idx + mura_size, new_start_idx, new_len, FALSE);
+                  mMsg_CopyString(&data[new_start_idx], mura_str_p, mura_size);
+              }
+          #endif
+
+              if (capitalize) {
+          '''
+          if old not in s:
+              raise SystemExit('m_msg_main.c_inc pattern not found')
+          p.write_text(s.replace(old, new))
+          PY
+      - name: Verify regression fix
+        run: |
+          grep -q '#ifdef TARGET_PC' src/game/m_land.c
+          grep -q '!defined(TARGET_PC)' src/game/m_msg_main.c_inc
+          python3 - <<'PY'
+          from pathlib import Path
+          land = Path('src/game/m_land.c').read_text()
+          msg = Path('src/game/m_msg_main.c_inc').read_text()
+          assert 'return name_len;' in land
+          assert '#if !defined(IMPROVEMENTS) && !defined(TARGET_PC)' in msg
+          print('Town-name suffix regression fixed')
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name "judecitoxd-dev"
+          git config user.email "judecitoxd@gmail.com"
+          git add src/game/m_land.c src/game/m_msg_main.c_inc
+          git commit -m "Fix PAL text appended to western town names"
+          git push origin HEAD:pc-custom-languages
