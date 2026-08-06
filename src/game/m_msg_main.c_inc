@@ -834,20 +834,19 @@ extern int mMsg_CopyDetermination(mMsg_Window_c* msg_p, u8* data, int start_idx,
 
 extern int mMsg_CopyCountryName(u8* data, int start_idx, int len, u32 capitalize) {
     int new_len;
-    int new_start_idx;
     int command_len = mFont_CodeSize_idx_get(data, start_idx);
     u8* land_name = mLd_GetLandName();
     int land_name_len = mMsg_Get_Length_String(land_name, LAND_NAME_SIZE);
 
-    new_start_idx = start_idx + land_name_len;
     new_len = mMsg_MoveDataCut(data, start_idx + land_name_len, start_idx + command_len, len, FALSE);
 
     mMsg_CopyString(&data[start_idx], land_name, land_name_len);
 
-// This entire block can be removed in the English version
-#ifndef IMPROVEMENTS
-    /* Leftover from JP to add 'むら' (mura) to the town name */
+#if !defined(IMPROVEMENTS) && !defined(TARGET_PC)
+    /* Leftover from JP to add 'むら' (mura) to the town name.
+     * Never run it in the international PC port. */
     {
+        int new_start_idx = start_idx + land_name_len;
         u8 mura_str[mMsg_FREE_STRING_LEN];
         u8* mura_str_p = mura_str;
         int mura_size;

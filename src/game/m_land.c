@@ -154,6 +154,12 @@ extern void mLd_CopyLandName(u8* dst, u8* src) {
  * @return The length of the new town name with "Mura" (むら/村) added.
  */
 extern int mLd_AddMuraString(u8* name, int name_len) {
+#ifdef TARGET_PC
+    /* Western town names never receive the Japanese "mura" suffix.
+     * PAL string slot 484 is an ordinary localized string. */
+    (void)name;
+    return name_len;
+#else
     u8 buf[16];
     int size;
 
@@ -162,6 +168,7 @@ extern int mLd_AddMuraString(u8* name, int name_len) {
     mem_copy(name + name_len, buf, size);
 
     return size + name_len;
+#endif
 }
 
 /**
