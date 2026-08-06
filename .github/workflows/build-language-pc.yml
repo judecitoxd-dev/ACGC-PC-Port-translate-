@@ -39,6 +39,8 @@ jobs:
           grep -q 'Turkish has no grammatical gender' pc/src/pc_language.c
           grep -q 'Turkce' pc/src/pc_settings_menu.c
           grep -q 'CHAR_BREVE_g' include/m_font.h
+          grep -q 'return name_len;' src/game/m_land.c
+          grep -q '!defined(TARGET_PC)' src/game/m_msg_main.c_inc
           ! find languages -type f \( -name '*.bin' -o -name '*.arc' -o -name '*.szs' \) -print -quit | grep -q .
       - name: Build native Win32 port
         shell: msys2 {0}
