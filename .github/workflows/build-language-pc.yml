@@ -29,7 +29,7 @@ jobs:
             python
             file
             zip
-      - name: Validate Multi6 source and tools
+      - name: Validate Multi6 source and town-name fix
         shell: msys2 {0}
         run: |
           python -m py_compile tools/msg_tool.py tools/language_pack.py tools/pal_multi5_import.py
@@ -53,18 +53,22 @@ jobs:
           file "$EXE" | grep -qi 'PE32 executable'
           test -f pc/build32/bin/SDL2.dll
           test -s "$EXE"
-      - name: Package test build
+      - name: Package corrected executable
         shell: msys2 {0}
         run: |
           mkdir -p pc/build32/bin/languages
-          cp languages/README.md pc/build32/bin/languages/
-          cp docs/LANGUAGES_ES.md pc/build32/bin/
-          cp docs/LANGUAGES_TR.md pc/build32/bin/
+          test ! -f languages/README.md || cp languages/README.md pc/build32/bin/languages/
+          test ! -f docs/LANGUAGES_ES.md || cp docs/LANGUAGES_ES.md pc/build32/bin/
+          test ! -f docs/LANGUAGES_TR.md || cp docs/LANGUAGES_TR.md pc/build32/bin/
+          printf '%s\n' \
+            'Town-name hotfix: disables the Japanese mura suffix in the international PC port.' \
+            'Fixes names such as LATAMmariposa; the displayed name is now only LATAM.' \
+            > pc/build32/bin/TOWN_NAME_HOTFIX.txt
           cd pc/build32/bin
-          zip -q -r "$GITHUB_WORKSPACE/Animal-Crossing-PC-Multi6-Turkish-Win32-base.zip" .
+          zip -q -r "$GITHUB_WORKSPACE/Animal-Crossing-PC-TownName-Hotfix-Win32-base.zip" .
       - uses: actions/upload-artifact@v4
         with:
-          name: Animal-Crossing-PC-Multi6-Turkish-Win32-base
-          path: Animal-Crossing-PC-Multi6-Turkish-Win32-base.zip
+          name: Animal-Crossing-PC-TownName-Hotfix-Win32-base
+          path: Animal-Crossing-PC-TownName-Hotfix-Win32-base.zip
           if-no-files-found: error
           retention-days: 7
